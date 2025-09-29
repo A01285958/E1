@@ -42,16 +42,51 @@ Busca todas las apariciones(1-based como en articulos cientficos) de un gen dent
 hebra. Devuelve lista de tuplas (inicio, fin)
 """
 
-def buscar_todas(hebra, gen):
-    indices = []
-    n = len(hebra)
-    m = len(gen)
-    for i in range(n - m + 1):
-        # compara el fragmento
-        if hebra[i:i + m] == gen:
-            # Se suma +1 al inicio para pasarlo a 1-based
-            indices.append((i+1, i+m)) #Fin inclusivo
-    return indices
+def LPS(gen):
+  lps = [0] * len(gen)
+  j = 0 #Longitud del prefijo actual
+  i = 1
+  while i < len(gen):
+    if gen[i] == gen[j]:
+      j += 1
+      lps[i] = j
+      i += 1
+    else:
+      if j != 0:
+        j = lps[j -1] #Retrocede al mejor prefijo anterior
+      else:
+        lps[i] = 0
+        i += 1
+  return lps
+
+def buscar_todas(secuencia, gen):
+  if not gen:
+    return []
+  pos = []
+  n = len(secuencia)
+  m = len(gen)
+  lps = LPS(gen)
+  i = 0 #Indice en secuencia
+  j = 0 #Indice en gen
+  while (i < n):
+    #Si coinciden, ambos punteros avanzan
+    if(secuencia[i] == gen[j]):
+      i += 1
+      j += 1
+    #Si no hay coincidencia j retrocede
+    else:
+      if(j > 0):
+        j = lps[j - 1] #usa LPS para saltar comparaciones
+      else:
+        i += 1
+
+    if(j == m):
+      inicio = i - m
+      fin = i - 1
+      pos.append((inicio, fin))  #Coincidencia completa
+      j = lps[j - 1]
+  return pos
+
 
 def resultados_indices(nombre_genoma, genoma, genes):
     print(f"\nIndices de aparicion en {nombre_genoma}")

@@ -250,27 +250,32 @@ def map_AA_NT(gen_len, frame_key, aa_i, aa_f):
 
 
 # === Busqueda de Proteinas ====
-def buscar_proteinas(genoma, proteinas_dict):
+def buscar_proteinas(genoma, proteinas_dict, k=4):
     resultados = {}
     marcos = traducir_6marcos(genoma)
     n = len(genoma)
 
     for nombre, aa in proteinas_dict.items():
+        if not aa:
+            continue
+        aa_pref = aa[:k]
         busquedas = []
         for frame_key, aa_seq in marcos.items():
-            matches = buscar_todas(aa_seq, aa)
+            matches = buscar_todas(aa_seq, aa_pref)
             for aa_i, aa_f in matches:  # Posciones en aa
-                nt_start, nt_end = map_AA_NT(n, frame_key, aa_i, aa_f)
+                nt_start, _ = map_AA_NT(n, frame_key, aa_i, aa_f)
 
                 # Primeros 4 AA
-                first4 = aa[:4]
+                # first4 = aa[:4]
 
                 # Codones asociados (primeros 12)
                 codones = genoma[nt_start : nt_start + 12]
                 if not frame_key.startswith("+"):
                     codones = reverso_complementario(codones)
+                # Fin estimado si toda la proteina estuviera en un marco
+                nt_end = nt_start + len(aa) * 3 - 1
 
-                busquedas.append((frame_key, nt_start, nt_end, first4, codones))
+                busquedas.append((nt_start, nt_end, aa_pref, codones))
         if busquedas:
             resultados[nombre] = busquedas
     return resultados
@@ -278,7 +283,7 @@ def buscar_proteinas(genoma, proteinas_dict):
 
 def resultados_proteinas(resultados):
     for nombre, lista in resultados.items():
-        for frame_key, nt_start, nt_end, first4, codones in lista:
+        for nt_start, nt_end, first4, codones in lista:
             print(f"Proteina: {nombre}")
             print(f" Genoma: {nt_start} - {nt_end}")
             print(f" 1eros 4 AA: {first4}")

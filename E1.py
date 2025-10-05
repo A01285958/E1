@@ -217,7 +217,7 @@ def traducir_hebra(seq, offset=0):
 
 # ==== Traduccion en 6 marcos =====
 def traducir_6marcos(genoma):
-    """Devuelve dict con Aaminoacidos traducidas"""
+    """Devuelve dict con genoma traducido a aminoacidos"""
     out = {}
     # Hebra directa
     for f in range(3):
@@ -262,31 +262,53 @@ def traducir_desde(genoma, frame_key, nt_start, aa_len):
 
 
 # === Busqueda de Proteinas ====
-def buscar_proteinas(genoma, proteinas_dict, k=8, verif_len=120):
+# nt_end = nt_start + len(AA)*3 - 1 (un final estimado, puede cruzar frameshift)
+def buscar_proteinas(genoma, proteinas_dict, k=4, verif_len=120):
+    # Diccionario donde se almacenaran los resultaods:{nombre_prot:[(inicio, fin, primeros4, codones)]}
     resultados = {}
-    marcos = traducir_6marcos(genoma)
-    n = len(genoma)
 
+    # Traducción del genoma completo en los 6 marcos de lectura
+    # +frame1, +frame2, +frame3 - lectura directa
+    # -frame1, -frame2, -frame3 - reverso complementario
+    marcos = traducir_6marcos(genoma)
+    n = len(genoma)  # Longitud del genoma (virus)
+
+    # Itera por cada proteina del seq-proteins.txt
     for nombre, aa in proteinas_dict.items():
         if not aa:
-            continue
+            continue  # Si esta vacia, se salta
+
+        # Se toma un prefijo (primeros k aminoacidos) como patron para busqueda rapida
         aa_pref = aa[: k + 1]
         busquedas = []
+
+        # Se recorre cada uno de los 6 marcos de lectura traducidos
         for frame_key, aa_seq in marcos.items():
+            # Busca todas las aparicion de aa_pref en la secuencia traducida
             matches = buscar_todas(aa_seq, aa_pref)
+
+            # Por cada coincidencia se obtiene una posicion dentro del marco
             for aa_i, aa_f in matches:  # Posciones en aa
+
+                # Convetir las posiciones de aa a coordenadas de nucleotidos
                 nt_start, _ = map_AA_NT(n, frame_key, aa_i, aa_f)
+
                 # Verificacion: comparar una extension mas larga
+                # Traduce un fragmento las largo
                 L = min(verif_len, len(aa))
                 aa_ext = traducir_desde(genoma, frame_key, nt_start, L)
+                # Compara caracter por caracter hasta que encuentra una diferencia
                 match_len = 0
                 for x, y in zip(aa_ext, aa[:L]):
                     if x != y:
                         break
                     match_len += 1
+                # Guarda coincidencia (longitud de coincidencia, marco, posición de inicio)
                 busquedas.append((match_len, frame_key, nt_start))
 
+        # Si se encontraron coincidencias
         if busquedas:
+            # Ordenar para priorizar el match mas largo
             busquedas.sort(reverse=True)  # Mayor match_len primero
             mejor = busquedas[0]
             match_len, frame_key, nt_start = mejor

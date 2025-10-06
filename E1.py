@@ -201,11 +201,6 @@ CODON_TABLE = {
 }
 
 
-def traducir_codon(codon):
-    # Diccionario codon -> aminoácido (tabla estándar)
-    return CODON_TABLE.get(codon, "X")
-
-
 # Traduce en un marco (offset 0/1/2). N→X si el codón no está en la tabla
 def traducir_hebra(seq, offset=0):
     aa = []

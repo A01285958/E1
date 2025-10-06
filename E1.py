@@ -307,7 +307,7 @@ def buscar_proteinas(genoma, proteinas_dict, k=4, verif_len=120):
                 # Convetir las posiciones de aa a coordenadas de nucleotidos
                 nt_start, _ = map_AA_NT(n, frame_key, aa_i, aa_f)
 
-                # Verificacion con salto de frameshift
+                # Verificacion con salto de frameshift para proteinas con casos especiales
                 match_len = verificar(genoma, frame_key, nt_start, aa, verif_len)
 
                 # Guarda coincidencia (longitud de coincidencia, marco, posición de inicio)
@@ -424,9 +424,6 @@ def main():
     print("Proteinas\n")
     res = buscar_proteinas(secuencias_genomas["Wuhan_2019"], proteinas)
     resultados_proteinas(res)
-
-    # for nombre, sec in list(proteinas.items())[:3]:
-    #     print(nombre, sec[:30], "...")
 
 
 if __name__ == "__main__":

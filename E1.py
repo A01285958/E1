@@ -246,14 +246,33 @@ def map_AA_NT(gen_len, frame_key, aa_i, aa_f):
         return (nt_start, nt_end)
 
 
-def traducir_desde(genoma, frame_key, nt_start, aa_len):
-    # Traduce aa_len AA desde nt_start en el mismo marco
-    frag = genoma[nt_start : nt_start + aa_len * 3]
-    if frame_key.startswith("+"):
-        return traducir_hebra(frag, 0)
-    else:
-        frag_rc = reverso_complementario(frag)
-        return traducir_hebra(frag_rc, 0)
+def verificar(genoma, frame_key, nt_start, aa_target, max_aa=120):
+    # Traduce en el marco actual si hay un mismatch (slippery sequence) como
+    # En la proteina 11, intenta un salto de +1 nt y continua en el nuevo marco
+    i_aa = 0
+    shift = False
+    # Signo del marco y offset del indice actual
+    plus = frame_key.startswith("+")
+    while i_aa < min(max_aa, len(aa_target)):
+        codon = (
+            genoma[nt_start : nt_start + 3]
+            if plus
+            else reverso_complementario(genoma[nt_start : nt_start + 3])
+        )
+        if len(codon) < 3:
+            break
+        aa = CODON_TABLE.get(codon, "X")
+        if aa == aa_target[i_aa]:
+            nt_start += 3
+            i_aa += 1
+            continue
+        if not shift:
+            # Aplicar frameshift avanza 1 nucleotido y "cambia" el marco
+            nt_start += 1
+            shift = True
+            continue
+        break
+    return i_aa  # Cuantos AA consecutivos se lograron al permitir el salto
 
 
 # === Busqueda de Proteinas ====
@@ -288,25 +307,16 @@ def buscar_proteinas(genoma, proteinas_dict, k=4, verif_len=120):
                 # Convetir las posiciones de aa a coordenadas de nucleotidos
                 nt_start, _ = map_AA_NT(n, frame_key, aa_i, aa_f)
 
-                # Verificacion: comparar una extension mas larga
-                # Traduce un fragmento las largo
-                L = min(verif_len, len(aa))
-                aa_ext = traducir_desde(genoma, frame_key, nt_start, L)
-                # Compara caracter por caracter hasta que encuentra una diferencia
-                match_len = 0
-                for x, y in zip(aa_ext, aa[:L]):
-                    if x != y:
-                        break
-                    match_len += 1
+                # Verificacion con salto de frameshift
+                match_len = verificar(genoma, frame_key, nt_start, aa, verif_len)
+
                 # Guarda coincidencia (longitud de coincidencia, marco, posición de inicio)
                 busquedas.append((match_len, frame_key, nt_start))
 
         # Si se encontraron coincidencias
         if busquedas:
-            # Ordenar para priorizar el match mas largo
-            busquedas.sort(reverse=True)  # Mayor match_len primero
-            mejor = busquedas[0]
-            match_len, frame_key, nt_start = mejor
+            # Elegir el que tenga la coincindencia mas larga
+            match_len, frame_key, nt_start = max(busquedas, key=lambda x: x[0])
             # Codones asociados (primeros 12)
             codones = genoma[nt_start : nt_start + 12]
             if not frame_key.startswith("+"):
